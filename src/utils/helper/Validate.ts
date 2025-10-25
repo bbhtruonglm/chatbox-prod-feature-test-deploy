@@ -68,3 +68,45 @@ export function normalizeFileName(name: string): string {
     .replace(/[^a-zA-Z0-9.\-_]/g, '') // loại ký tự lạ, giữ lại a-z 0-9 . - _
     .toLowerCase()
 }
+
+/**
+ * ✅ Chuẩn hóa dữ liệu page_id từ localStorage.
+ *
+ * @param {any} value - Dữ liệu đọc được (chuỗi hoặc mảng)
+ * @returns {string[]} - Mảng page_id hợp lệ
+ *
+ * Trường hợp xử lý:
+ * - Mảng ký tự riêng lẻ → ["6","3","8","3",...] → ["6383..."]
+ * - Mảng hợp lệ → ["123","456"]
+ * - Chuỗi đơn → "123"
+ */
+export const normalizePageIds = (value: any): string[] => {
+  if (!value) return []
+
+  if (Array.isArray(value)) {
+    /**
+     * ✅ Nếu là mảng ký tự đơn lẻ (ví dụ ["6","3","8"]) → gộp lại thành 1 chuỗi.
+     */
+    if (
+      value.every(
+        ch =>
+          typeof ch === 'string' && ch.length === 1 && /^[0-9a-zA-Z]$/.test(ch)
+      )
+    ) {
+      return [value.join('')]
+    }
+
+    /**
+     * ✅ Nếu là mảng chuỗi hợp lệ → giữ nguyên.
+     */
+    return value.filter(v => typeof v === 'string' && v.trim() !== '')
+  }
+
+  /**
+   * ✅ Nếu là chuỗi đơn → wrap vào mảng.
+   */
+  if (typeof value === 'string') return [value]
+
+  /** ❌ Trường hợp khác → trả về mảng rỗng. */
+  return []
+}

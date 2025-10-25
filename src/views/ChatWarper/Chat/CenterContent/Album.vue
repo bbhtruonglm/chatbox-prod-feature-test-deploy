@@ -360,7 +360,7 @@ import { ArrowLeftIcon, LinkIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { getItem, setItem } from '@/service/helper/localStorage'
 import ModalChangeAlbumSource from './ModalChangeAlbumSource.vue'
 import Pagination from './Pagination.vue'
-import { normalizeFileName } from '@/utils/helper/Validate'
+import { normalizeFileName, normalizePageIds } from '@/utils/helper/Validate'
 
 /**các giá tị của danh mục */
 type CategoryType = 'NEW' | 'FOLDER'
@@ -572,60 +572,168 @@ function onChangePageIds(ids: string[]) {
 //   )
 // }
 
+// function getFiles(is_change_page = false, ids: string[] = []) {
+//   const PAGE_ID_MAP = getItem('album_page_id') || {}
+//   page_ids.value =
+//     PAGE_ID_MAP?.[conversationStore.select_conversation?.fb_page_id || ''] ||
+//     conversationStore.select_conversation?.fb_page_id
+
+//   if (!page_ids.value) return
+
+//   is_loading.value = true
+//   is_done.value = false
+
+//   waterfall(
+//     [
+//       (cb: CbError) =>
+//         read_file_album(
+//           {
+//             page_id: !isEmpty(ids) ? ids : page_ids.value || [],
+//             folder_id: selected_folder_id.value,
+//             limit: LIMIT,
+//             skip: skip.value, // ✅ offset do handlePageChange set
+//           },
+//           (e, r) => {
+//             if (e) return cb(e)
+
+//             /** ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang tiếp theo */
+//             is_done.value = !r?.length || r.length < LIMIT
+//             /** Cập nhật skip value */
+//             skip.value = skip.value + Number(r?.length) || 0
+
+//             if (is_change_page) {
+//               /** ✅ Khi chuyển trang -> replace data cũ */
+//               file_list.value = (r as FileInfo[]).map(file => ({
+//                 ...file,
+//                 is_select: is_select_all.value,
+//               }))
+//               /** File root */
+//               file_list_root.value = (r as FileInfo[]).map(file => ({
+//                 ...file,
+//                 is_select: is_select_all.value,
+//               }))
+//             } else {
+//               /** ✅ Khi load thêm (scroll, v.v.) */
+//               addDataToFileList(r)
+//             }
+
+//             cb()
+//           }
+//         ),
+//       (cb: any) => {
+//         /** ❗ Không tự tăng skip ở đây nữa, vì handlePageChange đã điều khiển */
+
+//         cb()
+//       },
+//     ],
+//     e => {
+//       is_loading.value = false
+//       if (e) toastError(e)
+//     }
+//   )
+// }
+
+/**
+ * 📦 Lấy danh sách file (ảnh/video) từ album của một hoặc nhiều trang.
+ *
+ * @function getFiles
+ * @param {boolean} [is_change_page=false] - Có phải đang chuyển trang (thay đổi page_id)?
+ *   - `true` → thay thế toàn bộ danh sách file hiện tại.
+ *   - `false` → thêm dữ liệu (ví dụ khi load thêm).
+ * @param {string[]} [ids=[]] - Danh sách `page_id` được truyền thủ công (override dữ liệu local).
+ *
+ * @description
+ * Quy trình:
+ * 1. Lấy danh sách `page_id` từ localStorage (`album_page_id`) dựa theo trang hiện tại.
+ * 2. Chuẩn hóa dữ liệu (dạng chuỗi, mảng, hoặc ký tự rời) thành `string[]` hợp lệ.
+ * 3. Gọi API `read_file_album()` để lấy danh sách file.
+ * 4. Cập nhật danh sách file, trạng thái tải (loading/done), và hỗ trợ phân trang.
+ */
 function getFiles(is_change_page = false, ids: string[] = []) {
+  /** 🧩 Lấy dữ liệu map page_id từ localStorage */
   const PAGE_ID_MAP = getItem('album_page_id') || {}
-  page_ids.value =
-    PAGE_ID_MAP?.[conversationStore.select_conversation?.fb_page_id || ''] ||
-    conversationStore.select_conversation?.fb_page_id
 
-  if (!page_ids.value) return
+  /** 🧩 Lấy page_id của cuộc hội thoại hiện tại */
+  const CURRENT_PAGE_ID =
+    conversationStore.select_conversation?.fb_page_id || ''
 
+  /** 🧩 Lấy danh sách page_id đã lưu trong localStorage (có thể là chuỗi hoặc mảng) */
+  let stored_page_ids = PAGE_ID_MAP?.[CURRENT_PAGE_ID] || CURRENT_PAGE_ID
+
+  /** 🧩 Áp dụng normalize để luôn có mảng string[] chuẩn */
+  const NORMALIZED = normalizePageIds(stored_page_ids)
+
+  /** ✅ Gán vào reactive state (page_ids) */
+  page_ids.value = NORMALIZED
+
+  /** ⛔ Nếu không có page_id hợp lệ thì dừng */
+  if (!page_ids.value?.length) return
+
+  /** 🕓 Đặt trạng thái tải */
   is_loading.value = true
   is_done.value = false
 
+  /**
+   * 🪣 Thực hiện tuần tự 2 bước bằng async.waterfall:
+   *
+   * 1️⃣ Gọi API `read_file_album` để lấy dữ liệu file.
+   * 2️⃣ Sau khi hoàn tất → cập nhật trạng thái tải và danh sách.
+   */
   waterfall(
     [
+      /**
+       * 🔹 Bước 1: Gọi API đọc dữ liệu file theo page_id.
+       */
       (cb: CbError) =>
         read_file_album(
           {
+            /**
+             * Danh sách page_id cần lấy:
+             * - Nếu có `ids` truyền vào → ưu tiên dùng.
+             * - Ngược lại dùng `page_ids.value` từ local.
+             */
             page_id: !isEmpty(ids) ? ids : page_ids.value || [],
             folder_id: selected_folder_id.value,
             limit: LIMIT,
-            skip: skip.value, // ✅ offset do handlePageChange set
+            skip: skip.value /** offset được handle bởi handlePageChange */,
           },
           (e, r) => {
             if (e) return cb(e)
 
             /** ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang tiếp theo */
             is_done.value = !r?.length || r.length < LIMIT
-            /** Cập nhật skip value */
+
+            /** 📈 Cập nhật giá trị skip để load tiếp lần sau */
             skip.value = skip.value + Number(r?.length) || 0
 
             if (is_change_page) {
-              /** ✅ Khi chuyển trang -> replace data cũ */
+              /**
+               * ✅ Khi chuyển sang trang mới → replace toàn bộ file cũ.
+               */
               file_list.value = (r as FileInfo[]).map(file => ({
                 ...file,
                 is_select: is_select_all.value,
               }))
-              /** File root */
               file_list_root.value = (r as FileInfo[]).map(file => ({
                 ...file,
                 is_select: is_select_all.value,
               }))
             } else {
-              /** ✅ Khi load thêm (scroll, v.v.) */
+              /**
+               * ✅ Khi load thêm (scroll xuống cuối danh sách) → append dữ liệu.
+               */
               addDataToFileList(r)
             }
 
             cb()
           }
         ),
-      (cb: any) => {
-        /** ❗ Không tự tăng skip ở đây nữa, vì handlePageChange đã điều khiển */
-
-        cb()
-      },
+      /** 🔹 Bước 2: Callback kết thúc waterfall */
+      (cb: any) => cb(),
     ],
+    /**
+     * 🔹 Hoàn tất toàn bộ luồng (thành công hoặc lỗi)
+     */
     e => {
       is_loading.value = false
       if (e) toastError(e)
@@ -633,47 +741,101 @@ function getFiles(is_change_page = false, ids: string[] = []) {
   )
 }
 
+/**
+ * 📁 Lấy danh sách thư mục (album folder) từ các trang được chọn.
+ *
+ * @function getFolders
+ * @param {boolean} [is_change_page=false] - Cờ báo hiệu có phải đang chuyển trang hay không.
+ *   - `true`: Thay thế toàn bộ danh sách thư mục hiện tại.
+ *   - `false`: Thêm dữ liệu mới vào danh sách hiện tại.
+ * @param {string[]} [ids=[]] - Danh sách `page_id` được truyền thủ công (nếu cần override dữ liệu từ local).
+ *
+ * @description
+ * Quy trình:
+ * 1. Đọc danh sách `page_id` từ localStorage (`album_page_id`).
+ * 2. Chuẩn hóa dữ liệu để đảm bảo luôn là `string[]` hợp lệ.
+ * 3. Gọi API `read_folder_album()` để lấy danh sách folder (album).
+ * 4. Cập nhật `folder_list`, trạng thái tải (`is_loading`, `is_done`) và phân trang (`skip`).
+ */
 function getFolders(is_change_page = false, ids: string[] = []) {
-  /** lấy page_id từ local */
+  /** 🧩 Lấy dữ liệu map page_id từ localStorage */
   const PAGE_ID_MAP = getItem('album_page_id') || {}
-  /** Lấy giá trị của page_id */
-  page_ids.value =
-    PAGE_ID_MAP?.[conversationStore.select_conversation?.fb_page_id || ''] ||
-    conversationStore.select_conversation?.fb_page_id
 
-  /** nếu không có id trang thì thôi */
-  if (!page_ids.value) return
+  /** 🧩 Lấy page_id của cuộc hội thoại hiện tại */
+  const CURRENT_PAGE_ID =
+    conversationStore.select_conversation?.fb_page_id || ''
 
+  /** 🧩 Lấy dữ liệu page_id đã lưu trong localStorage (có thể là chuỗi hoặc mảng) */
+  let stored_page_ids = PAGE_ID_MAP?.[CURRENT_PAGE_ID] || CURRENT_PAGE_ID
+
+  /** 🧩 Chuẩn hóa dữ liệu page_id */
+  const NORMALIZED = normalizePageIds(stored_page_ids)
+
+  /** ✅ Gán lại vào reactive state */
+  page_ids.value = NORMALIZED
+
+  /** ⛔ Nếu không có id hợp lệ thì dừng */
+  if (!page_ids.value?.length) return
+
+  /** 🕓 Bắt đầu tải dữ liệu */
   is_loading.value = true
   is_done.value = false
 
+  /**
+   * 🪣 Dùng waterfall để thực hiện tuần tự:
+   * 1️⃣ Gọi API lấy folder album.
+   * 2️⃣ Cập nhật danh sách và trạng thái tải.
+   */
   waterfall(
     [
+      /**
+       * 🔹 Bước 1: Gọi API đọc danh sách folder.
+       */
       (cb: any) =>
         read_folder_album(
           {
+            /**
+             * Nếu có `ids` truyền vào → dùng nó,
+             * ngược lại dùng `page_ids.value` từ local.
+             */
             page_id: !isEmpty(ids) ? ids : page_ids.value || [],
             limit: LIMIT,
             skip: skip.value,
           },
           (e, r) => {
             if (e) return cb(e)
+
+            /** ✅ Nếu dữ liệu ít hơn LIMIT => không còn trang kế tiếp */
             if (!r?.length || r.length < LIMIT) is_done.value = true
 
             if (is_change_page) {
+              /**
+               * ✅ Khi chuyển trang → thay toàn bộ danh sách cũ.
+               */
               folder_list.value = r as FolderInfo[]
             } else {
+              /**
+               * ✅ Khi load thêm → nối thêm dữ liệu vào danh sách cũ.
+               */
               folder_list.value.push(...(r as FolderInfo[]))
             }
 
             cb()
           }
         ),
+
+      /**
+       * 🔹 Bước 2: Sau khi thành công → cập nhật skip.
+       */
       (cb: any) => {
         skip.value += LIMIT
         cb()
       },
     ],
+
+    /**
+     * 🔹 Hoàn tất toàn bộ quá trình (có thể thành công hoặc lỗi).
+     */
     e => {
       is_loading.value = false
       if (e) toastError(e)

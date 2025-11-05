@@ -567,8 +567,10 @@ function onChangePageIds(ids: string[]) {
   skip.value = 0
   /** Chọn trạng thái file hoặc folder */
   if (selected_category.value === 'NEW') {
+    folder_list.value = []
     getFiles(true, ids)
   } else {
+    file_list.value = []
     getFolders(true, ids)
   }
 }
@@ -744,6 +746,8 @@ function getFolders(is_change_page = false, ids: string[] = []) {
           },
           (e, r) => {
             if (e) return cb(e)
+
+            console.log(r, 'rrrrrr')
 
             /** Nếu dữ liệu ít hơn LIMIT => không còn trang kế tiếp */
             if (!r?.length || r.length < LIMIT) is_done.value = true
@@ -1076,6 +1080,7 @@ function addDataToFileList(
   source: 'fetch' | 'upload' = 'fetch'
 ) {
   if (!Array.isArray(data) || data.length === 0) return
+
   /** Tạo new file từ data đầu vào */
   const NEW_FILES = data.map(file => ({
     ...file,
@@ -1151,10 +1156,15 @@ function uploadFileFromDevice() {
          * Truyền kèm page_id để xác định album đích.
          * Khi upload xong, thêm file mới vào danh sách hiển thị.
          */
-        upload_file_album({ page_id: NEW_PAGE_ID }, FORM, (e, r) => {
-          if (r) addDataToFileList([r], 'upload') /** Cập nhật UI sau upload */
-          next() /** Tiếp tục upload file tiếp theo */
-        })
+        upload_file_album(
+          { page_id: NEW_PAGE_ID, folder_id: selected_folder_id.value },
+          FORM,
+          (e, r) => {
+            if (r)
+              addDataToFileList([r], 'upload') /** Cập nhật UI sau upload */
+            next() /** Tiếp tục upload file tiếp theo */
+          }
+        )
       },
       /** Callback sau khi tất cả file đã upload xong */
       e => {

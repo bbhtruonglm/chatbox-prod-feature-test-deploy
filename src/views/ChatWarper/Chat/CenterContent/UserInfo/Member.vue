@@ -7,7 +7,7 @@
     position="BOTTOM"
     :back="210"
     :distance="9"
-    class_content="flex flex-col  gap-1 max-h-[210px] overflow-hidden overflow-y-auto"
+    class_content="flex flex-col  gap-1 max-h-[210px] "
   >
     <div class="flex justify-between gap-2 p-2 text-right items-center">
       <div class="size-5"></div>
@@ -28,7 +28,7 @@
         <Loading class="mx-auto" />
       </div>
     </div>
-    <div class="">
+    <div class="overflow-hidden overflow-y-auto">
       <!-- Lặp qua member_lists và hiển thị từng memberItem -->
       <MemberItem
         v-for="(item, index) in member_lists"

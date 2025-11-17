@@ -57,6 +57,11 @@
       </div>
       <div class="flex gap-3 text-slate-500">
         <button
+          v-show="
+            conversationStore.select_conversation?.platform_type?.includes(
+              'ZALO'
+            )
+          "
           class="p-2 bg-slate-100 rounded-full"
           @click="
             () => {

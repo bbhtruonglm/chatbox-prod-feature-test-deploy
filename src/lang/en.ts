@@ -337,6 +337,14 @@ const source: Language = {
       your_group_name: 'Your Group Name',
       create_zalo_group: 'Create Zalo Group',
       member_selected: 'Member Selected',
+      confirm_remove_member:
+        'Are you sure you want to remove this member from the group?',
+
+      no_data: 'No members',
+      list_member: 'List members',
+      add_member: 'Add member',
+      reset_select: 'Reset change',
+      remove_member: 'Remove member',
 
       unsupport_message:
         'This message content cannot be displayed currently, please contact the system administrator.',

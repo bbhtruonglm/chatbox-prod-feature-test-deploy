@@ -119,7 +119,7 @@ import type {
   FilterConversation,
   QueryConversationResponse,
 } from '@/service/interface/app/conversation'
-import { useOrgStore, usePageStore } from '@/stores'
+import { useConversationStore, useOrgStore, usePageStore } from '@/stores'
 import { N13ZaloPersonal } from '@/utils/api/N13ZaloPersonal'
 import { N4SerivceAppConversation } from '@/utils/api/N4Service/Conversation'
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/vue/24/outline'
@@ -128,6 +128,7 @@ import { keys } from 'lodash'
 /** Stores quản lý org và page */
 const orgStore = useOrgStore()
 const pageStore = usePageStore()
+const conversationStore = useConversationStore()
 
 /** UI state */
 /** Tên group Zalo muốn tạo */
@@ -245,7 +246,8 @@ async function fetchAllConversations() {
   /** Nếu đang fetch thì return */
   if (is_fetching.value) return
   is_fetching.value = true
-
+  /** Lấy page id theo conversation đang được chọn */
+  const CURRENT_PAGE_ID = conversationStore?.select_conversation?.fb_page_id
   /** Lấy tất cả page_id đang chọn */
   const PAGE_IDS = keys(pageStore.selected_page_id_list)
   /** Filter mặc định */
@@ -266,7 +268,7 @@ async function fetchAllConversations() {
   while (keep_fetching) {
     /** Gọi API để fetch conversation */
     const RES: QueryConversationResponse | any = await $main.getConversation({
-      page_ids: PAGE_IDS,
+      page_ids: [CURRENT_PAGE_ID || ''],
       org_id: orgStore.selected_org_id || '',
       filter: FILTER,
       limit: 50,

@@ -257,6 +257,8 @@ async function fetchAllConversations() {
   /** Nếu đang fetch thì return */
   if (is_fetching.value) return
   is_fetching.value = true
+  /** Page hiện tại đang được chọn */
+  const CURRENT_PAGE_ID = conversationStore?.select_conversation?.fb_page_id
 
   /** Lấy tất cả page_id đang chọn */
   const PAGE_IDS = keys(pageStore.selected_page_id_list)
@@ -278,7 +280,7 @@ async function fetchAllConversations() {
   while (keep_fetching) {
     /** Gọi API để fetch conversation */
     const RES: QueryConversationResponse | any = await $main.getConversation({
-      page_ids: PAGE_IDS,
+      page_ids: [CURRENT_PAGE_ID || ''],
       org_id: orgStore.selected_org_id || '',
       filter: FILTER,
       limit: 50,

@@ -15,8 +15,9 @@
       </p>
     </div>
     <div
-      @click="handleRemoveMember(member_id)"
+      @click="confirmDeleteMember()"
       class="opacity-0 group-hover:opacity-100"
+      v-tooltip="$t('v1.common.remove_member')"
     >
       <TrashIcon class="size-4" />
     </div>
@@ -29,8 +30,11 @@ import { N13ZaloPersonal } from '@/utils/api/N13ZaloPersonal'
 import { TrashIcon } from '@heroicons/vue/24/outline'
 import { keys } from 'lodash'
 import { computed } from 'vue'
+
+import { confirm } from '@/service/helper/alert'
+import { useI18n } from 'vue-i18n'
 /*Prod truyền vào từ cha**/
-defineProps<{
+const props = defineProps<{
   /**Avarta thành viên*/
   avatar_member: string
   /**Tên thành viên*/
@@ -38,6 +42,9 @@ defineProps<{
   /** ID member */
   member_id: string
 }>()
+/** Hàm dịch */
+const $t = useI18n().t
+/** Thông tin page */
 const pageStore = usePageStore()
 /** THông tin conversation */
 const conversationStore = useConversationStore()
@@ -76,5 +83,15 @@ async function handleRemoveMember(member_id?: string) {
   } catch (err) {
     console.error('Lỗi khi tạo group:', err)
   }
+}
+
+/** xác nhận xóa các tập tin */
+function confirmDeleteMember() {
+  confirm('question', $t('v1.common.confirm_remove_member'), '', is_cancel => {
+    /** nếu hủy thì thôi */
+    if (is_cancel) return
+    /** xóa các tập tin đã chọn */
+    handleRemoveMember(props.member_id)
+  })
 }
 </script>

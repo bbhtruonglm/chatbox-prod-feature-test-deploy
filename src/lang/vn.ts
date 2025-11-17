@@ -142,6 +142,8 @@ const source: Language = {
       list_member: 'Danh sách thành viên',
       add_member: 'Thêm thành viên',
       reset_select: 'Thiết lập lại',
+      remove_member: 'Xóa thành viên',
+      confirm_remove_member: 'Xác nhận xóa thành viên khỏi nhóm?',
 
       unsupport_message:
         'Nội dung tin nhắn này hiện tại chưa thể hiển thị được, vui lòng liên hệ với quản trị viên hệ thống',

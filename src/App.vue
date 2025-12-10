@@ -93,7 +93,7 @@ class Main {
     /** nếu không có token thì thôi */
     if (!ACCESS_TOKEN) return
 
-    // lưu token vào local storage
+    /** lưu token vào local storage */
     setItem('access_token', ACCESS_TOKEN)
   }
   /**Lấy thông tin đối tác */

@@ -90,7 +90,7 @@ class Main {
       this.SERVICE_QUERY_STRING.get('access_token') ||
       this.SERVICE_QUERY_STRING.get('token')
 
-    // nếu không có token thì thôi
+    /** nếu không có token thì thôi */
     if (!ACCESS_TOKEN) return
 
     // lưu token vào local storage
